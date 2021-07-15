@@ -1,4 +1,4 @@
-subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT)
+subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
 
   implicit none
   BEGIN_DOC
@@ -8,6 +8,7 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT)
   integer,         intent(in)   :: nT
   double precision,intent(in)   :: r_one_e_dm_mo(nT,nT)
   double precision,intent(in)   :: r_two_e_dm_mo(nT,nT,nT,nT)
+  logical, intent(inout)        :: is_converged 
 
 ! Local variables
 
@@ -399,9 +400,10 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT)
   deallocate( r_orbrot_h_square )
   deallocate( r_orbrot_g_vector )
 
+
   if( max_grad .le.max_grad_thresh  .and. mean_grad .le.mean_grad_thresh .and. &
       max_kappa.le.max_kappa_thresh .and. mean_kappa.le.mean_kappa_thresh ) then
-    call system('touch converged')
+    is_converged = .true.
   end if
 
 
