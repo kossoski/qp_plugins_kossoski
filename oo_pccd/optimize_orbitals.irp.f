@@ -394,8 +394,8 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
   write(*,*) 'Maximum absolute kappa_vector: ', max_kappa
   write(*,*) 'Mean absolute kappa_vector:    ', mean_kappa
   write(*,*) 
-  write(*,*) 'kappa_vector:'
-  call write_i_1d_array(kappa_vector,nT_tri)
+! write(*,*) 'kappa_vector:'
+! call write_i_1d_array(kappa_vector,nT_tri)
 
   deallocate( r_orbrot_h_square )
   deallocate( r_orbrot_g_vector )
