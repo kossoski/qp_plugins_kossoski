@@ -140,6 +140,10 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
 ! write(*,*) 'Hessian eigenvectors:'
 ! call write_ij_2d_array(hessian_eigvectors,nT_tri,nT_tri)
 
+! Avoid problems with very small eigenvalues:
+  do i=1,nT_tri
+    if( abs(hessian_eigvalues(i)).lt.1.0d-10 ) hessian_eigvalues(i) = 1.0d20
+  end do
 
   allocate( kappa_vector(nT_tri) )
   kappa_vector = 0.0d0
@@ -186,6 +190,21 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
     do i=1,nT_tri
       r_orbrot_g_vector(i) = kappa_vector(i) / ( hessian_eigvalues(i) - aug_hessian_eigvalues(saddle_order1) * lambda_hessian )
     end do
+! Test if the Hessian has the desired structure:
+    logical :: correct_saddle_order
+    correct_saddle_order = .true.
+    double precision :: saddle_order_eps
+    saddle_order_eps = 1.0d-10
+    do i=1,saddle_order
+      if( hessian_eigvalues(i).gt.(-saddle_order_eps) ) then
+        correct_saddle_order = .false.
+        exit
+      end if
+    end do
+    if( hessian_eigvalues(saddle_order1).lt.saddle_order_eps ) then
+      correct_saddle_order = .false.
+    end if
+
     deallocate( hessian_eigvalues )
 
 ! And finally the actual kappa_vector:
@@ -240,6 +259,21 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
       r_orbrot_g_vector(i) = kappa_vector_aux(i) / ( hessian_eigvalues(i) - aug_hessian_eigvalues(saddle_order1) )
 !     r_orbrot_g_vector(i) = kappa_vector_aux(i) / ( hessian_eigvalues(i) - aug_hessian_eigvalues(saddle_order1) * lambda_hessian )
     end do
+! Test if the Hessian has the desired structure:
+!   logical :: correct_saddle_order
+    correct_saddle_order = .true.
+!   double precision :: saddle_order_eps
+    saddle_order_eps = 1.0d-10
+    do i=1,saddle_order
+      if( hessian_eigvalues(i).gt.(-saddle_order_eps) ) then
+        correct_saddle_order = .false.
+        exit
+      end if
+    end do
+    if( hessian_eigvalues(saddle_order1).lt.saddle_order_eps ) then
+      correct_saddle_order = .false.
+    end if
+
     deallocate( aug_hessian_eigvalues )
 
 !   write(*,*) 'Projection of (negative) g (2d):'
@@ -323,8 +357,8 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
       kappa_vector(i) = sum( hessian_eigvectors(:,i) * r_orbrot_g_vector(:) )
     end do
 
-! write(*,*) 'Projection of gradients (2d):'
-! call write_i_1d_array(kappa_vector,nT_tri)
+    write(*,*) 'Projection of gradients (2d):'
+    call write_i_1d_array(kappa_vector,nT_tri)
  
     do i=1,nT_tri
       if( hessian_eigvalues(i) .gt. 0.0d0 ) then
@@ -340,10 +374,14 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
       end do
       do i=min_negative_direction,max_negative_direction
         if( hessian_eigvalues(i) .le. 0.0d0 ) then
-          r_orbrot_g_vector(i) = sign( step_negative_direction, kappa_vector(i) )
+!         r_orbrot_g_vector(i) = sign( step_negative_direction, kappa_vector(i) )
+          r_orbrot_g_vector(i) = sign( - step_negative_direction / hessian_eigvalues(i), kappa_vector(i) )
         else
           r_orbrot_g_vector(i) = kappa_vector(i) / hessian_eigvalues(i)
         end if
+      end do
+      do i=max_negative_direction+1,nT_tri
+        r_orbrot_g_vector(i) = kappa_vector(i) / hessian_eigvalues(i)
       end do
     else
 ! Let us use r_orbrot_g_vector as a buffer:
@@ -401,9 +439,14 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
   deallocate( r_orbrot_g_vector )
 
 
+! Test for convergence
   if( max_grad .le.max_grad_thresh  .and. mean_grad .le.mean_grad_thresh .and. &
       max_kappa.le.max_kappa_thresh .and. mean_kappa.le.mean_kappa_thresh ) then
     is_converged = .true.
+  end if
+
+  if( LA_solver_orb_opt=='diagonalize_augmented_p' .or. LA_solver_orb_opt=='diagonalize_augmented_p' ) then
+     if( .not.correct_saddle_order ) is_converged = .false.
   end if
 
 

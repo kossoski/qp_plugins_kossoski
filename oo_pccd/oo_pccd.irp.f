@@ -6,12 +6,13 @@ program oo_pccd
 
   double precision,allocatable  :: t2(:,:)
   double precision,allocatable  :: z2(:,:)
+  integer :: iteration = 0
   logical :: is_converged = .false.
 
   provide mo_two_e_integrals_in_map
 
 ! Start of orbital optimization loop
-  do while(.not.is_converged)
+  do while(.not.is_converged .and. iteration.lt.max_iter)
 
     allocate(t2(r_val_occ_num,r_vir_num))
     allocate(z2(r_val_occ_num,r_vir_num))
@@ -55,6 +56,8 @@ program oo_pccd
 
     call clear_mo_map
     TOUCH mo_coef 
+
+    iteration = iteration + 1
 
   end do
 ! End of orbital optimization loop

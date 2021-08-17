@@ -172,7 +172,7 @@ subroutine run_pccd(t2,z2,nOa,nV)
 
   if( t2_guess=='read' ) then
 
-    character(len=*), parameter :: guess_t_amplitudes_file = 'guess_t_amplitudes.dat'
+    character(len=*), parameter :: guess_t_amplitudes_file = 'final_t_amplitudes.dat'
     inquire(file=guess_t_amplitudes_file,exist=ex)
 
     if( .not. ex ) then
@@ -416,7 +416,7 @@ subroutine run_pccd(t2,z2,nOa,nV)
 
   if( z2_guess=='read' ) then
 
-    character(len=*), parameter :: guess_z_amplitudes_file = 'guess_z_amplitudes.dat'
+    character(len=*), parameter :: guess_z_amplitudes_file = 'final_z_amplitudes.dat'
     inquire(file=guess_z_amplitudes_file,exist=ex)
 
     if( .not. ex ) then
