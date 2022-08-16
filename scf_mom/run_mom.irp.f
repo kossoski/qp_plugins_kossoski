@@ -4,7 +4,7 @@ subroutine run_mom(mo_coef_reference,swap)
 ! TODO : Put the documentation of the program here
   END_DOC
   double precision, intent(inout) :: mo_coef_reference(ao_num,mo_num)
-  logical,          intent(out) :: swap
+  logical,          intent(out)   :: swap
 
   double precision, allocatable :: orbital_overlap(:,:)
   double precision, allocatable :: projected_overlap(:)
@@ -15,7 +15,7 @@ subroutine run_mom(mo_coef_reference,swap)
   integer                       :: i, j
 
   mo_num_no_core = mo_num - n_core_orb
-  n_occ_no_core = elec_alpha_num
+  n_occ_no_core  = elec_alpha_num
 
   ! Compute the overlap between the current MOs and the reference MOs
   allocate( orbital_overlap(mo_num,mo_num) )
@@ -35,7 +35,6 @@ subroutine run_mom(mo_coef_reference,swap)
 
   deallocate( orbital_overlap )
 
-
   ! Set array of natural numbers
   allocate( iorder(mo_num_no_core) )
   call set_integer_list(iorder,mo_num_no_core)
@@ -50,7 +49,7 @@ subroutine run_mom(mo_coef_reference,swap)
   end do
 
   ! Print the projected overlaps
-  if(degug_mom) then
+  if(debug_mom) then
     write(*,*) 'projected overlap (occupied): '
     do i=1,n_occ_no_core
       write(*,*) orbs_occ(i), projected_overlap(mo_num_no_core+1-i)
@@ -65,7 +64,6 @@ subroutine run_mom(mo_coef_reference,swap)
   deallocate( projected_overlap )
   deallocate( iorder )
 
-
   ! Check if the MOs have to be swapped
   swap = .false.
   do i=n_core_orb+1,n_occ_no_core
@@ -74,8 +72,7 @@ subroutine run_mom(mo_coef_reference,swap)
       exit
     end if
   end do
-  if(degug_mom) write(*,*) 'Swapped orbitals in MOM: ', swap
-
+  if(debug_mom) write(*,*) 'Swapped orbitals in MOM: ', swap
 
   ! Swap the MOs if required
   if( swap ) then

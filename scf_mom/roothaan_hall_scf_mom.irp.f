@@ -126,10 +126,10 @@ END_DOC
 
     do while (Delta_energy_SCF > 0.d0)
 
-      if(degug_mom) write(*,*) 'entered delta_energy_scf > 0.0'
+      if(debug_mom) write(*,*) 'entered delta_energy_scf > 0.0'
       integer :: i_delta
       i_delta = i_delta + 1
-      if(degug_mom) write(*,*) i_delta, SCF_energy, energy_SCF_previous, Delta_Energy_SCF, level_shift
+      if(debug_mom) write(*,*) i_delta, SCF_energy, energy_SCF_previous, Delta_Energy_SCF, level_shift
 
       mo_coef(1:ao_num,1:mo_num) = mo_coef_save
       if (level_shift <= .1d0) then
@@ -142,7 +142,7 @@ END_DOC
 
 !     call run_mom(mo_coef_reference,swap)
 !     if(swap) dim_DIIS = 0
-!     if(degug_mom) write(*,*) swap
+!     if(debug_mom) write(*,*) swap
 
       if(frozen_orb_scf)then
         call reorder_core_orb
@@ -151,7 +151,7 @@ END_DOC
       TOUCH mo_coef
       Delta_Energy_SCF = SCF_energy - energy_SCF_previous
       energy_SCF = SCF_energy
-      if(degug_mom) write(*,*) i_delta, SCF_energy, Delta_Energy_SCF, level_shift
+      if(debug_mom) write(*,*) i_delta, SCF_energy, Delta_Energy_SCF, level_shift
       if (level_shift-level_shift_save > 40.d0) then
         level_shift = level_shift_save * 4.d0
         SOFT_TOUCH level_shift
@@ -164,7 +164,7 @@ END_DOC
 
     call run_mom(mo_coef_reference,swap)
     if(swap) dim_DIIS = 0
-    if(degug_mom) write(*,*) swap
+    if(debug_mom) write(*,*) swap
     TOUCH MO_coef
 
     Delta_Energy_SCF = SCF_energy - energy_SCF_previous
