@@ -15,10 +15,12 @@ subroutine run_ci_mom(mo_coef_reference,swap)
   integer                       :: n_doubly_occ_no_core
   integer                       :: i, j
 
+  n_doubly_occ_no_core = n_doubly_occ - n_core_orb
   mo_num_no_core = mo_num - n_core_orb
   n_occ_no_core  = n_doubly_occ_no_core + n_singly_occ
 
-  n_doubly_occ_no_core = n_doubly_occ - n_core_orb
+  write(*,*) 'n_singly_occ, n_doubly_occ: ', n_singly_occ, n_doubly_occ
+  write(*,*) 'n_occ_no_core, mo_num_no_core: ', n_occ_no_core, mo_num_no_core
 
   ! Compute the overlap between the current molecular orbitals and the initial molecular orbitals
   allocate( orbital_overlap(mo_num,mo_num) )
@@ -76,7 +78,7 @@ subroutine run_ci_mom(mo_coef_reference,swap)
 
   ! Check if the MOs have to be swapped
   swap = .false.
-  do i=n_core_orb+1,n_occ_no_core
+  do i=n_core_orb+1,n_core_orb+n_occ_no_core
     if( .not. any(orbs_occ==i) ) then
       swap = .true.
       exit

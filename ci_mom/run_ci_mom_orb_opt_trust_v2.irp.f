@@ -237,7 +237,7 @@ allocate(H(tmp_n,tmp_n), h_f(m,m,m,m), v_grad(tmp_n),W(tmp_n,tmp_n),e_val(tmp_n)
 
       ! Hessian,gradient,Criterion -> x 
       call trust_region_step_w_expected_e(tmp_n,H,W,e_val,v_grad,prev_criterion,rho,nb_iter,delta,criterion_model,tmp_x,must_exit) 
-      
+
       if (must_exit) then
         print*,'step_in_trust_region sends the message : Exit'
         exit
