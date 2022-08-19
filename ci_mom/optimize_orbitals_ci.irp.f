@@ -370,6 +370,7 @@ subroutine optimize_orbitals_ci
       r_orbrot_g_vector(i) = kappa_vector_aux(i) / ( hessian_eigvalues(i) - aug_hessian_eigvalues(1) * lambda_hessian )
     end do
     deallocate( aug_hessian_eigvalues )
+    deallocate( kappa_vector_aux )
 
 ! And finally the actual kappa_vector:
     do i=1,nT_tri
@@ -671,88 +672,3 @@ subroutine check_allowed_LA_solver_orb_opt(char)
 end subroutine check_allowed_LA_solver_orb_opt
 
 
-subroutine update_molecular_orbitals(d,p,q,U)
-  implicit none
-  BEGIN_DOC
-! Update the molecular orbitals d by applying a rotation matrix U
-  END_DOC
-  integer,          intent(in)    :: p, q
-  double precision, intent(inout) :: d(p,q)
-  double precision, intent(in)    :: U(q,q)
-  double precision, allocatable   :: tmp(:,:)
-  integer                         :: i, j
-  allocate( tmp(p,q) )
-  tmp = d
-  do j=1,q
-    do i=1,p
-      d(i,j) = sum ( tmp(i,:) * U(:,j) )
-    end do
-  end do
-  deallocate( tmp )
-end subroutine update_molecular_orbitals
-
-
-subroutine check_mos_orthonormality
-  implicit none
-  BEGIN_DOC
-! Writes the maximum error of the expected MOs overlap
-  END_DOC
-  double precision, parameter :: thresh = 1.d-10
-  integer                     :: i, j
-  logical                     :: orthonormal = .true.
-  double precision            :: max_error
-  max_error = 0.0d0
-  do i=1,mo_num
-    max_error = max( max_error, abs( mo_overlap(i,i)-1.0d0 ) )
-  end do
-  do i=1,mo_num-1
-    do j=i+1,mo_num
-      max_error = max( max_error, abs( mo_overlap(i,j) ) )
-    end do
-  end do
-  write(*,*) 'Maximum error in MOs overlap: ', max_error
-  if( max_error .gt. thresh ) orthonormal = .false.
-  
-  if( orthonormal ) then
-     write(*,*) 'MOs are orthonormal'
-  else
-     write(*,*) 'WARNING: large error in the orthonormality of MOs'
-  end if
-end subroutine check_mos_orthonormality
-
-subroutine check_rotation_matrix(A,n,ok)
-implicit none
-  BEGIN_DOC
-! Check the orthornormality of matrix A(n,n)
-  END_DOC
-integer,          intent(in)  :: n
-double precision, intent(in)  :: A(n,n)
-logical,          intent(out) :: ok
-
-double precision              :: AAt(n,n)
-double precision              :: max_error
-integer                       :: i, j
-
-ok = .true.
-
-AAt = 0.0d0
-do i=1,n
-  AAt(i,i) = 1.0d0
-enddo
-
-call dgemm('N','T',n,n,n,1.0d0,A,size(A,1),A,size(A,1),-1.0d0,AAt,size(AAt,1))
-
-max_error = 0.0d0
-do j=1,n
-  do i=1,n
-    max_error = max( max_error, abs(AAt(i,j)) )
-  enddo
-enddo
-
-if (abs(max_error) > 1.0d-12) then
-  write(*,*) 'WARNING: too large matrix element in R.R^T - 1: ', abs(max_error)
-  ok = .false.
-endif
-write(*,*) 'Largest matrix element in R.R^T - 1: ', abs(max_error)
-
-end subroutine

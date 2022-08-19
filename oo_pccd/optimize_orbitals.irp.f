@@ -332,6 +332,7 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
       r_orbrot_g_vector(i) = kappa_vector_aux(i) / ( hessian_eigvalues(i) - aug_hessian_eigvalues(1) * lambda_hessian )
     end do
     deallocate( aug_hessian_eigvalues )
+    deallocate( kappa_vector_aux )
 
 ! And finally the actual kappa_vector:
     do i=1,nT_tri
@@ -507,55 +508,4 @@ subroutine check_allowed_LA_solver_orb_opt(char)
   write(*,*) 'Variable for LA_solver_orb_opt not allowed: ', char
   stop
 end subroutine check_allowed_LA_solver_orb_opt
-
-
-subroutine update_molecular_orbitals(d,p,q,U)
-  implicit none
-  BEGIN_DOC
-! Update the molecular orbitals d by applying a rotation matrix U
-  END_DOC
-  integer,          intent(in)    :: p, q
-  double precision, intent(inout) :: d(p,q)
-  double precision, intent(in)    :: U(q,q)
-  double precision, allocatable   :: tmp(:,:)
-  integer                         :: i, j
-  allocate( tmp(p,q) )
-  tmp = d
-  do j=1,q
-    do i=1,p
-      d(i,j) = sum ( tmp(i,:) * U(:,j) )
-    end do
-  end do
-  deallocate( tmp )
-end subroutine update_molecular_orbitals
-
-
-subroutine check_mos_orthonormality
-  implicit none
-  BEGIN_DOC
-! Writes whether the molecular orbitals are orthorormal or not
-  END_DOC
-  double precision, parameter :: thresh = 1.d-10
-  integer                     :: i, j
-  logical                     :: orthonormal = .true.
-  do i=1,mo_num
-    if( (mo_overlap(i,i) - 1.d0) .gt. thresh ) then
-      orthonormal = .false.
-      exit
-    end if
-  end do
-  outer: do j=1,mo_num-1
-    do i=j+1,mo_num
-      if( mo_overlap(i,j) .gt. thresh ) then
-        orthonormal = .false.
-        exit outer
-      end if
-    end do
-  end do outer
-  if( orthonormal ) then
-     write(*,*) 'MOs are orthonormal'
-  else
-     write(*,*) 'WARNING: MOs are not orthonormal'
-  end if
-end subroutine check_mos_orthonormality
 

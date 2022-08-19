@@ -358,187 +358,164 @@ subroutine solve_polynomial_2nd(c0,c1,c2,root1,root2)
 end subroutine solve_polynomial_2nd
 
 
-subroutine lapack_exp_antisymm_matrix(m,A,C)
+subroutine matrix_that_rotates_by_alpha_around_u(R,alpha,u)
+implicit none
+  BEGIN_DOC
+! R = exp(A) = exp( alpha K ) = I + sin(alpha) K + (1-cos(alpha)) K**2
+  END_DOC
+double precision, intent(out) :: R(3,3)
+double precision, intent(in)  :: alpha
+double precision, intent(in)  :: u(3)
+
+double precision :: x, y, z
+double precision :: norm
+double precision :: K(3,3)
+
+norm = norm2(u)
+
+x = u(1) / norm
+y = u(2) / norm
+z = u(3) / norm
+
+K = transpose( reshape( (/ 0.d0, -z,     y, &
+                           z,     0.d0, -x, &
+                          -y,     x,     0.d0 /), shape(K) ) )
+
+R = reshape( (/ 1.d0,  0.d0,  0.d0, &
+                0.d0,  1.d0,  0.d0, &
+                0.d0,  0.d0,  1.d0 /), shape(R) )
+
+R = R + sin(alpha) * K + (1.0d0-cos(alpha)) * matmul(K,K)
+
+end subroutine
+
+
+subroutine set_integer_list(list,n)
   implicit none
   BEGIN_DOC
-  ! Computes C = exp(A), where A is a real anti-symmetric matrix ( A^\dag = A^T = - A )
+  !
   END_DOC
-  integer         , intent(in)  :: m
-  double precision, intent(in)  :: A(m,m)
-  double precision, intent(out) :: C(m,m)
-
-  complex*16, allocatable       :: iA(:,:)
-  double precision, allocatable :: eigvalues(:)
-  complex*16, allocatable       :: eigvectors(:,:)
-  complex*16                    :: img
-  integer                       :: i, j
-
-  img = dcmplx( 0.d0, 1.d0 )
-
-  allocate( iA(m,m) )
-  allocate( eigvalues(m), eigvectors(m,m) )
-
-! Since A is real anti-symmetric, iA is hermitian and can be diagonalized with the zheevd Lapack routine
-  do j=1,m
-    iA(:,j) = A(:,j) * img
+  integer, intent(in)  :: n
+  integer, intent(out) :: list(n)
+  integer              :: i
+  do i=1,n
+    list(i) = i
   end do
+end subroutine
 
-  call lapack_diag_hermitian_matrix(iA,m,eigvectors,eigvalues)
 
-! Print eigenvalues:
-! write(*,*) 'eigenvalues of the real anti-symmetric matrix:'
-! do i=1,m
-!   write(*,*) i, eigvalues(i)
-! end do
-
-! iA will be used as a temporary matrix:
-! First compute U exp(-i lambda):
-  do j=1,m
-    do i=1,m
-      iA(i,j) = eigvectors(i,j) * exp( -img * eigvalues(j) )
+subroutine update_molecular_orbitals(d,p,q,U)
+  implicit none
+  BEGIN_DOC
+! Update the molecular orbitals d by applying a rotation matrix U
+  END_DOC
+  integer,          intent(in)    :: p, q
+  double precision, intent(inout) :: d(p,q)
+  double precision, intent(in)    :: U(q,q)
+  double precision, allocatable   :: tmp(:,:)
+  integer                         :: i, j
+  allocate( tmp(p,q) )
+  tmp = d
+  do j=1,q
+    do i=1,p
+      d(i,j) = sum ( tmp(i,:) * U(:,j) )
     end do
   end do
-  deallocate( eigvalues )
+  deallocate( tmp )
+end subroutine update_molecular_orbitals
 
-! And then complete with U^\dag on the right:
-! eigvectors = dconjg( transpose(eigvectors) )
-  do j=1,m
-    do i=1,m
-      C(i,j) = real( sum( iA(i,:) * dconjg( eigvectors(j,:) ) ) )
+
+subroutine evaluate_orbital_overlap(mo_coef_1,mo_coef_2,orbital_overlap)
+
+  implicit none
+  BEGIN_DOC
+  !
+  END_DOC
+  double precision, intent(in)  :: mo_coef_1(ao_num,mo_num)
+  double precision, intent(in)  :: mo_coef_2(ao_num,mo_num)
+  double precision, intent(out) :: orbital_overlap(mo_num,mo_num)
+  double precision, allocatable :: T(:,:)
+
+  allocate ( T(ao_num,mo_num) )
+
+  call dgemm('N','N', ao_num, mo_num, ao_num,               &
+      1.d0, ao_overlap, ao_num,                             &
+      mo_coef_2, ao_num,                                    &
+      0.d0, T, ao_num )
+
+  call dgemm('T','N', mo_num, mo_num, ao_num,               &
+      1.d0, mo_coef_1, ao_num,                              &
+      T, ao_num,                                            &
+      0.d0, orbital_overlap, mo_num)
+
+  deallocate(T)
+
+end subroutine
+
+
+subroutine check_mos_orthonormality
+  implicit none
+  BEGIN_DOC
+! Writes the maximum error of the expected MOs overlap
+  END_DOC
+  double precision, parameter :: thresh = 1.d-10
+  integer                     :: i, j
+  logical                     :: orthonormal = .true.
+  double precision            :: max_error
+  max_error = 0.0d0
+  do i=1,mo_num
+    max_error = max( max_error, abs( mo_overlap(i,i)-1.0d0 ) )
+  end do
+  do i=1,mo_num-1
+    do j=i+1,mo_num
+      max_error = max( max_error, abs( mo_overlap(i,j) ) )
     end do
   end do
+  write(*,*) 'Maximum error in MOs overlap: ', max_error
+  if( max_error .gt. thresh ) orthonormal = .false.
 
-  deallocate( iA, eigvectors )
-
-end subroutine lapack_exp_antisymm_matrix
-
-
-subroutine lapack_diag_hermitian_matrix(A,m,C,w)
-  implicit none
-  BEGIN_DOC
-  ! Diagonalizes the complex hermitian matrix A, returning the eigenvalues in w and the eigenvectors in C
-  END_DOC
-  integer         , intent(in)  :: m
-  complex*16      , intent(in)  :: A(m,m)
-  complex*16      , intent(out) :: C(m,m)
-  double precision, intent(out) :: w(m)
-
-  complex*16, allocatable       :: work(:)
-  integer                       :: lwork
-  double precision, allocatable :: rwork(:)
-  integer                       :: lrwork
-  integer, allocatable          :: iwork(:)
-  integer                       :: liwork
-  integer                       :: info
-  
-  complex*16, allocatable       :: Acopy(:,:)
-
-  allocate( Acopy(m,m) )
-  Acopy = A
-
-! First call is to obtain the optial working spaces (lwork, lrwork, and liwork)
-
-  lwork = -1
-  lrwork = -1
-  liwork = -1
-  allocate( work(1), rwork(1), iwork(1) )
-
-! call zheevd('V', 'U', m, A, m, w, work, lwork, rwork, lrwork, iwork, liwork, info)
-  call zheevd('V', 'U', m, Acopy, m, w, work, lwork, rwork, lrwork, iwork, liwork, info)
-
-  if (info < 0) then
-    print *, irp_here, ': zheevd: the ',-info,'-th argument had an illegal value'
-    stop 2
-  endif
-
-  lwork  = int( real(work(1)) )
-  lrwork = int( rwork(1) )
-  liwork = iwork(1)
-  deallocate( work, rwork, iwork )
-  allocate( work(lwork), rwork(lrwork), iwork(liwork) )
-
-! Second call is for real
-
-! call zheevd('V', 'U', m, A, m, w, work, lwork, rwork, lrwork, iwork, liwork, info)
-  call zheevd('V', 'U', m, Acopy, m, w, work, lwork, rwork, lrwork, iwork, liwork, info)
-
-  if (info < 0) then
-    print *, irp_here, ': zheevd: the ',-info,'-th argument had an illegal value'
-    stop 2
-  else if( info > 0 ) then
-    write(*,*) 'zheevd Failed'
-    stop 1
+  if( orthonormal ) then
+     write(*,*) 'MOs are orthonormal'
+  else
+     write(*,*) 'WARNING: large error in the orthonormality of MOs'
   end if
-
-! C = A
-  C = Acopy
-
-  deallocate( Acopy )
-  deallocate( work, rwork, iwork )
-
-end subroutine lapack_diag_hermitian_matrix
+end subroutine check_mos_orthonormality
 
 
-subroutine lapack_solve_linear_dsy(m,A,B,X)
-  implicit none
+subroutine check_rotation_matrix(A,n,ok)
+implicit none
   BEGIN_DOC
-  ! Solve the linear system AX=B, for real A and B, returning the solution X
+! Check the orthornormality of matrix A(n,n)
   END_DOC
-  integer         , intent(in)  :: m
-  double precision, intent(in)  :: A(m,m)
-  double precision, intent(in)  :: B(m)
-  double precision, intent(out) :: X(m)
-! double precision, intent(inout) :: X(m)
+integer,          intent(in)  :: n
+double precision, intent(in)  :: A(n,n)
+logical,          intent(out) :: ok
 
-  integer, allocatable          :: ipiv(:)
-  double precision, allocatable :: work(:)
-  integer                       :: lwork
-  integer                       :: info
-  
-  double precision, allocatable :: Acopy(:,:)
-  double precision, allocatable :: Bcopy(:)
+double precision              :: AAt(n,n)
+double precision              :: max_error
+integer                       :: i, j
 
-  allocate( Acopy(m,m) )
-  allocate( Bcopy(m) )
+ok = .true.
 
-  Acopy(:,:) = A(:,:)
-  Bcopy(:) = B(:)
-! X = B
+AAt = 0.0d0
+do i=1,n
+  AAt(i,i) = 1.0d0
+enddo
 
-! First call is to obtain the optial working spaces (lwork)
+call dgemm('N','T',n,n,n,1.0d0,A,size(A,1),A,size(A,1),-1.0d0,AAt,size(AAt,1))
 
-  allocate( ipiv(m) )
-  lwork = -1
-  allocate( work(1) )
+max_error = 0.0d0
+do j=1,n
+  do i=1,n
+    max_error = max( max_error, abs(AAt(i,j)) )
+  enddo
+enddo
 
-! call dsysv('U', m, m, A, m, ipiv, X, m, work, lwork, info)
-  call dsysv('U', m, m, Acopy, m, ipiv, Bcopy, m, work, lwork, info)
+if (abs(max_error) > 1.0d-12) then
+  write(*,*) 'WARNING: too large matrix element in R.R^T - 1: ', abs(max_error)
+  ok = .false.
+endif
+write(*,*) 'Largest matrix element in R.R^T - 1: ', abs(max_error)
 
-  if (info < 0) then
-    print *, irp_here, ': dsysv: the ',-info,'-th argument had an illegal value'
-    stop 2
-  endif
+end subroutine
 
-  lwork  = int( work(1) )
-  deallocate( work )
-  allocate( work(lwork) )
-
-! Second call is for real
-
-! call dsysv('U', m, m, A, m, ipiv, X, m, work, lwork, info)
-! call dsysv('U', m, m, Acopy, m, ipiv, Bcopy, m, work, lwork, info)
-  call dsysv('U', m, m, Acopy, m, ipiv, Bcopy, m, work, lwork, info)
-
-  if (info < 0) then
-    print *, irp_here, ': dsysv: the ',-info,'-th argument had an illegal value'
-    stop 2
-  else if( info > 0 ) then
-    write(*,*) 'dsysv Failed'
-    stop 1
-  end if
-
-  X(:) = Bcopy(:)
-
-  deallocate( Acopy, Bcopy )
-
-end subroutine lapack_solve_linear_dsy
