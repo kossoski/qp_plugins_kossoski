@@ -393,13 +393,28 @@ end subroutine
 subroutine set_integer_list(list,n)
   implicit none
   BEGIN_DOC
-  !
+! Creates an array of integers list = (1 2 ... n)
   END_DOC
   integer, intent(in)  :: n
   integer, intent(out) :: list(n)
   integer              :: i
   do i=1,n
     list(i) = i
+  end do
+end subroutine
+
+
+subroutine set_identity_matrix(A,n)
+  implicit none
+  BEGIN_DOC
+! Creates an identity matrix of size A(n,n)
+  END_DOC
+  integer,          intent(in)  :: n
+  double precision, intent(out) :: A(n,n)
+  integer                       :: i
+  A = 0.0d0
+  do i=1,n
+    A(i,i) = 1.0d0
   end do
 end subroutine
 
@@ -482,7 +497,7 @@ subroutine check_mos_orthonormality
 end subroutine check_mos_orthonormality
 
 
-subroutine check_rotation_matrix(A,n,ok)
+subroutine check_orthornormality_rotation_matrix(A,n,ok)
 implicit none
   BEGIN_DOC
 ! Check the orthornormality of matrix A(n,n)
@@ -493,14 +508,12 @@ logical,          intent(out) :: ok
 
 double precision              :: AAt(n,n)
 double precision              :: max_error
+double precision, parameter   :: thresh = 1.0d-12
 integer                       :: i, j
 
 ok = .true.
 
-AAt = 0.0d0
-do i=1,n
-  AAt(i,i) = 1.0d0
-enddo
+call set_identity_matrix(AAt,n)
 
 call dgemm('N','T',n,n,n,1.0d0,A,size(A,1),A,size(A,1),-1.0d0,AAt,size(AAt,1))
 
@@ -511,7 +524,7 @@ do j=1,n
   enddo
 enddo
 
-if (abs(max_error) > 1.0d-12) then
+if (abs(max_error) > thresh ) then
   write(*,*) 'WARNING: too large matrix element in R.R^T - 1: ', abs(max_error)
   ok = .false.
 endif

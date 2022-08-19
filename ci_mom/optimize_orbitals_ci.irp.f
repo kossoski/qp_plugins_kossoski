@@ -2,7 +2,7 @@ subroutine optimize_orbitals_ci
 
   implicit none
   BEGIN_DOC
-  ! Optimize the orbtitals of a general CI wave function
+  ! Optimize the orbitals of a general CI wave function
   END_DOC
 
 ! Local variables
@@ -10,7 +10,6 @@ subroutine optimize_orbitals_ci
   logical :: is_converged
 
   integer                       :: i,j,p
-  double precision,allocatable  :: r_orbrot_g(:,:)
   double precision,allocatable  :: r_orbrot_g_vector(:)
   double precision,allocatable  :: r_orbrot_h(:,:,:,:)
   double precision,allocatable  :: r_orbrot_h_square_inv(:,:)
@@ -55,133 +54,86 @@ subroutine optimize_orbitals_ci
   call state_average_energy(prev_criterion)
 
   is_converged = .false.
+
 ! Start of orbital optimization loop
   do while( .not.( is_converged .or. iteration.gt.max_iter) )
 
 
-! Form orbital rotation gradient
-
+! Computes orbital rotation gradient
   allocate( r_orbrot_g_vector(nT_tri) )
-! call gradient_list_opt(tmp_n, m, tmp_list, v_grad, max_elem_grad, norm_grad)
   call gradient_list_opt(nT_tri, nT, list_act, r_orbrot_g_vector, max_grad, norm_grad)
 
-! allocate( r_orbrot_g(nT,nT) )
-! call compute_r_orbrot_g(r_orbrot_g,r_one_e_dm_mo,r_two_e_dm_mo,nT)
-! call compute_r_orbrot_g_pccd(r_orbrot_g,r_one_e_dm_mo,r_two_e_dm_mo,nT)
-
-!! write(*,*) 'Gradients (2d):'
-!! call write_ij_2d_array(r_orbrot_g,nT,nT)
-
-! call transform_2index_to_1index_lowtri(r_orbrot_g,r_orbrot_g_vector,nT)
-! deallocate( r_orbrot_g )
-
-  write(*,*) 
+! Prints the gradient
+! write(*,*) 
 ! write(*,*) 'Gradients (1d):'
 ! call write_i_1d_array(r_orbrot_g_vector,nT_tri)
 
 
-! Write maximum and mean absolute gradient
-  write(*,*) 
+! Prints information on the gradient
 ! max_grad  = maxval( abs(r_orbrot_g_vector(:)) )
   mean_grad = sum( abs(r_orbrot_g_vector(:)) ) / size(r_orbrot_g_vector)
+  write(*,*) 
   write(*,*) 'Maximum absolute gradient:     ', max_grad
   write(*,*) 'Mean absolute gradient:        ', mean_grad
   write(*,*) 'Norm absolute gradient:        ', norm_grad
 
-! Start Hessian_update case
+! Computes orbital rotation Hessian
+
+  allocate( r_orbrot_h_square(nT_tri,nT_tri) )
 
 ! Full Newton-Raphson:
   if( Hessian_update == 'full_Newton_Raphson' ) then
-
-    allocate( r_orbrot_h_square(nT_tri,nT_tri) )
     allocate( r_orbrot_h(nT,nT,nT,nT) )
-!   call hessian_list_opt(tmp_n, m, tmp_list, H, h_f)
     call hessian_list_opt(nT_tri, nT, list_act, r_orbrot_h_square, r_orbrot_h)
     deallocate( r_orbrot_h )
-
-!   allocate( r_orbrot_h(nT,nT,nT,nT) )
-!   call compute_r_orbrot_h(r_orbrot_h,r_one_e_dm_mo,r_two_e_dm_mo,nT)
-!   call compute_r_orbrot_h_pccd(r_orbrot_h,r_one_e_dm_mo,r_two_e_dm_mo,nT)
-!   write(*,*) 'Computed orbital rotation Hessian'
-
-!   allocate( r_orbrot_h_square(nT_tri,nT_tri) )
-!   call transform_4index_to_2index_lowtri(r_orbrot_h,r_orbrot_h_square,nT,nT)
-!   write(*,*) 'Transformed orbital rotation Hessian'
-!   deallocate( r_orbrot_h )
-
   end if
 
 ! Diagonal Newton-Raphson:
   if( Hessian_update == 'diagonal' ) then
-
-    allocate( r_orbrot_h_square(nT_tri,nT_tri) )
     allocate( r_orbrot_h(nT,nT,nT,nT) )
     call diag_hessian_list_opt(nT_tri, nT, list_act, r_orbrot_h_square, r_orbrot_h)
     deallocate( r_orbrot_h )
-
-!   double precision, allocatable :: r_orbrot_h_diagonal(:,:)
-!   allocate( r_orbrot_h_diagonal(nT,nT) )
-!   call compute_r_orbrot_h_diagonal(r_orbrot_h_diagonal,r_one_e_dm_mo,r_two_e_dm_mo,nT)
-!!  call compute_r_orbrot_h_diagonal_pccd(r_orbrot_h_diagonal,r_one_e_dm_mo,r_two_e_dm_mo,nT)
-!   write(*,*) 'Computed diagonal of the orbital rotation Hessian'
-
-!   double precision, allocatable :: r_orbrot_h_diagonal_square(:)
-!   allocate( r_orbrot_h_diagonal_square(nT_tri) )
-!   call transform_2index_to_1index_lowtri(r_orbrot_h_diagonal,r_orbrot_h_diagonal_square,nT)
-!   deallocate( r_orbrot_h_diagonal )
-
-!   allocate( r_orbrot_h_square(nT_tri,nT_tri) )
-!   r_orbrot_h_square = 0.0d0
-!   do i=1,nT_tri
-!     r_orbrot_h_square(i,i) = r_orbrot_h_diagonal_square(i)
-!   end do
-!   write(*,*) 'Transformed orbital rotation Hessian'
-!   deallocate( r_orbrot_h_diagonal_square )
-
   end if
 
-
-! Diagonal with 1's:
+! Identity:
   if( Hessian_update == 'identity_diagonal' ) then
-    allocate( r_orbrot_h_square(nT_tri,nT_tri) )
-    r_orbrot_h_square = 0.0d0
-    do i=1,nT_tri
-      r_orbrot_h_square(i,i) = 1.0d0
-    end do
+    call set_identity_matrix(r_orbrot_h_square,nT_tri)
   end if
 
-! End Hessian_update case
+! Prints the Hessian:
+! write(*,*) 
+! write(*,*) 'Hessian (2d)'
+! call write_ij_2d_array(r_orbrot_h_square,nT_tri,nT_tri)
 
-! Add diagonal mu_damping:
+
+! Adds diagonal term mu_damping to the Hessian diagonal:
 ! call add_shift_to_diagonal(r_orbrot_h_square,nT_tri,mu_damping)
 
 
-!! write(*,*) 'r_orbrot_h_square:'
-!! call write_ij_2d_array(r_orbrot_h_square,nT_tri,nT_tri)
-
-! Check whether r_orbrot_h_square is symmetric:
+! Checks whether the Hessian matrix is symmetric:
   call check_matrix_symmetry(r_orbrot_h_square,nT_tri)
 
 
-! Diagonalize the Hessian matrix and write its eigenvalues
+! Diagonalizes the Hessian matrix and writes its eigenvalues
   double precision, allocatable :: hessian_eigvalues(:)
   double precision, allocatable :: hessian_eigvectors(:,:)
   allocate( hessian_eigvalues(nT_tri) )
   allocate( hessian_eigvectors(nT_tri,nT_tri) )
   call lapack_diag(hessian_eigvalues,hessian_eigvectors,r_orbrot_h_square,nT_tri,nT_tri)
 ! call lapack_diagd(hessian_eigvalues,hessian_eigvectors,r_orbrot_h_square,nT_tri,nT_tri)
-  write(*,*) 'Diagonalized the orbital rotation Hessian'
   write(*,*) 
   write(*,*) 'Hessian eigenvalues:'
   call write_i_1d_array(hessian_eigvalues,nT_tri)
 ! write(*,*) 'Hessian eigenvectors:'
 ! call write_ij_2d_array(hessian_eigvectors,nT_tri,nT_tri)
 
+
 ! Avoid problems with very small eigenvalues:
 ! do i=1,nT_tri
 !   if( abs(hessian_eigvalues(i)).lt.1.0d-10 ) hessian_eigvalues(i) = 1.0d20
 !   if( abs(hessian_eigvalues(i)).lt.1.0d-10 ) hessian_eigvalues(i) = 1.0d80
 ! end do
+
 
   allocate( kappa_vector(nT_tri) )
   kappa_vector = 0.0d0
@@ -287,8 +239,6 @@ subroutine optimize_orbitals_ci
     deallocate( aug_hessian_eigvectors )
     deallocate( aug_r_orbrot_h_square )
     write(*,*)
-    write(*,*) 'Diagonalized augmented (negative) Hessian'
-    write(*,*)
     write(*,*) 'Augmented (negative) Hessian eigenvalues:'
     call write_i_1d_array(aug_hessian_eigvalues,saddle_order1)
 
@@ -297,6 +247,7 @@ subroutine optimize_orbitals_ci
       r_orbrot_g_vector(i) = kappa_vector_aux(i) / ( hessian_eigvalues(i) - aug_hessian_eigvalues(saddle_order1) )
 !     r_orbrot_g_vector(i) = kappa_vector_aux(i) / ( hessian_eigvalues(i) - aug_hessian_eigvalues(saddle_order1) * lambda_hessian )
     end do
+
 ! Test if the Hessian has the desired structure:
 !   logical :: correct_saddle_order
     correct_saddle_order = .true.
@@ -357,8 +308,6 @@ subroutine optimize_orbitals_ci
     call lapack_diag(aug_hessian_eigvalues,aug_hessian_eigvectors,aug_r_orbrot_h_square,comp_saddle_order1,comp_saddle_order1)
     deallocate( aug_hessian_eigvectors )
     deallocate( aug_r_orbrot_h_square )
-    write(*,*)
-    write(*,*) 'Diagonalized augmented (positive) Hessian'
     write(*,*)
     write(*,*) 'Augmented (positive) Hessian eigenvalues:'
     call write_i_1d_array(aug_hessian_eigvalues(1),1)
@@ -486,17 +435,16 @@ subroutine optimize_orbitals_ci
 ! End LA_solver_orb_opt case
 
 
-! Write maximum and mean kappa_vector
-  write(*,*) 
-  write(*,*) 'Updated k_vector'
-  write(*,*) 'Norm of kappa_vector:          ', sqrt( sum( kappa_vector(:)**2 ) )
-  write(*,*) 
+! Prints information on the kappa_vector
   max_kappa = maxval( abs(kappa_vector(:)) )
   mean_kappa = sum( abs(kappa_vector(:)) ) / size(kappa_vector)
+  write(*,*) 
+  write(*,*) 'Norm of kappa_vector:          ', sqrt( sum( kappa_vector(:)**2 ) )
   write(*,*) 'Maximum absolute kappa_vector: ', max_kappa
   write(*,*) 'Mean absolute kappa_vector:    ', mean_kappa
   write(*,*) 
 
+! Prints the kappa_vector
   write(*,*) 'kappa_vector:'
   call write_i_1d_array(kappa_vector,nT_tri)
 
@@ -516,16 +464,9 @@ subroutine optimize_orbitals_ci
 
 
   allocate( kappa_square(nT,nT) )
-  ! 1D tmp -> 2D tmp 
   call vec_to_mat_v2(nT_tri, nT, kappa_vector, kappa_square)
-! call form_A_square(kappa_vector,nT_tri,kappa_square,nT)
 
   deallocate( kappa_vector )
-
-!     write(*,*) 'kappa_square'
-!     do i=1,20
-!       write(*,'(20(f10.5,x))') (kappa_square(j,i), j=1,20)
-!     end do
 
 ! Damp rotation between orbitals orb_a, orb_b and all the others, by damp_rotation
   integer :: orb_a, orb_b
@@ -549,14 +490,10 @@ subroutine optimize_orbitals_ci
   write(*,*) 'Formed the rotation matrix U = exp( kappa )'
   deallocate( kappa_square )
 
-!     write(*,*) 'rotation matrix'
-!     do i=1,20
-!       write(*,'(20(f10.5,x))') (r_unitary_orbrot(j,i), j=1,20)
-!     end do
 
 ! Check the rotation matrix r_unitary_orbrot
   logical :: rotation_matrix_ok
-  call check_rotation_matrix(r_unitary_orbrot,nT,rotation_matrix_ok)
+  call check_orthornormality_rotation_matrix(r_unitary_orbrot,nT,rotation_matrix_ok)
   if(.not.rotation_matrix_ok) then
 !   if( mu_damping == 0.0d0 ) then
 !     mu_damping = 1.0d0
@@ -576,8 +513,7 @@ subroutine optimize_orbitals_ci
   deallocate( r_unitary_orbrot )
 
 
-! Apply the orbital rotation U to the molecular orbitals: d' = d U
-! call update_molecular_orbitals(mo_coef,ao_num,nT,r_unitary_orbrot)
+! Apply the orbital rotation U to the molecular orbitals: mo_coef' = mo_coef R
   call update_molecular_orbitals(mo_coef,ao_num,mo_num,R)
   deallocate( R )
 

@@ -107,10 +107,7 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
 ! Diagonal with 1's:
   if( Hessian_update == 'identity_diagonal' ) then
     allocate( r_orbrot_h_square(nT_tri,nT_tri) )
-    r_orbrot_h_square = 0.0d0
-    do i=1,nT_tri
-      r_orbrot_h_square(i,i) = 1.0d0
-    end do
+    call set_identity_matrix(r_orbrot_h_square,nT_tri)
   end if
 
 ! End Hessian_update case
