@@ -385,6 +385,12 @@ subroutine lapack_exp_antisymm_matrix(m,A,C)
 
   call lapack_diag_hermitian_matrix(iA,m,eigvectors,eigvalues)
 
+! Print eigenvalues:
+! write(*,*) 'eigenvalues of the real anti-symmetric matrix:'
+! do i=1,m
+!   write(*,*) i, eigvalues(i)
+! end do
+
 ! iA will be used as a temporary matrix:
 ! First compute U exp(-i lambda):
   do j=1,m
@@ -395,18 +401,12 @@ subroutine lapack_exp_antisymm_matrix(m,A,C)
   deallocate( eigvalues )
 
 ! And then complete with U^\dag on the right:
-  eigvectors = dconjg( transpose(eigvectors) )
+! eigvectors = dconjg( transpose(eigvectors) )
   do j=1,m
     do i=1,m
-      C(i,j) = real( sum( iA(i,:) * eigvectors(:,j) ) )
+      C(i,j) = real( sum( iA(i,:) * dconjg( eigvectors(j,:) ) ) )
     end do
   end do
-
-! Print eigenvalues:
-! write(*,*) 'eigenvalues:'
-! do i=1,m
-!   write(*,*) i, eigvalues(i)
-! end do
 
   deallocate( iA, eigvectors )
 
