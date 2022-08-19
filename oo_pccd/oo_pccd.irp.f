@@ -12,7 +12,7 @@ program oo_pccd
   provide mo_two_e_integrals_in_map
 
 ! Start of orbital optimization loop
-  do while(.not.is_converged .and. iteration.lt.max_iter)
+  do while( .not.( is_converged .or. iteration.gt.max_iter) )
 
     allocate(t2(r_val_occ_num,r_vir_num))
     allocate(z2(r_val_occ_num,r_vir_num))
