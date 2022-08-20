@@ -419,6 +419,25 @@ subroutine set_identity_matrix(A,n)
 end subroutine
 
 
+subroutine count_numbers_below_thresh(x,n,thresh,count)
+  implicit none
+  BEGIN_DOC
+! Count how many elements of the array x are smaller than thresh
+! The array x is assumed to be sorted in increasing order
+  END_DOC
+  integer,          intent(in)  :: n
+  double precision, intent(in)  :: x(n)
+  double precision, intent(in)  :: thresh
+  integer,          intent(out) :: count
+  integer                       :: i
+  count = 0 
+  do i=1,n
+    if( x(i).gt.thresh ) exit
+    count = count + 1
+  end do
+end subroutine
+
+
 subroutine update_molecular_orbitals(d,p,q,U)
   implicit none
   BEGIN_DOC
@@ -486,6 +505,7 @@ subroutine check_mos_orthonormality
       max_error = max( max_error, abs( mo_overlap(i,j) ) )
     end do
   end do
+  write(*,*) 
   write(*,*) 'Maximum error in MOs overlap: ', max_error
   if( max_error .gt. thresh ) orthonormal = .false.
 

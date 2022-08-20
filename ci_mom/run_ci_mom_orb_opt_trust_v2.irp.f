@@ -308,28 +308,28 @@ allocate(H(tmp_n,tmp_n), h_f(m,m,m,m), v_grad(tmp_n),W(tmp_n,tmp_n),e_val(tmp_n)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-    call run_ci_mom(mo_coef_reference,swap)
+!   call run_ci_mom(mo_coef_reference,swap)
 
   ! Swap orbitals
-    if( swap ) then
+!   if( swap ) then
 
-      call clear_mo_map
-      TOUCH mo_coef psi_det psi_coef ci_energy two_e_dm_mo
+!     call clear_mo_map
+!     TOUCH mo_coef psi_det psi_coef ci_energy two_e_dm_mo
 
       ! Diagonalization of the hamiltonian
-      FREE ci_energy! To enforce the recomputation
-      call diagonalize_ci
-      call save_wavefunction_unsorted
+!     FREE ci_energy! To enforce the recomputation
+!     call diagonalize_ci
+!     call save_wavefunction_unsorted
 
       ! Energy obtained after the diagonalization of the CI matrix
-      call state_average_energy(prev_criterion)
+!     call state_average_energy(prev_criterion)
 
-    end if
+!   end if
 
 ! Update the reference MOs for the original version of MOM. Do nothing for initial MOM (IMOM)
-    if( mom_type == 'MOM' ) then
-      mo_coef_reference = mo_coef
-    end if
+!   if( mom_type == 'MOM' ) then
+!     mo_coef_reference = mo_coef
+!   end if
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
