@@ -65,7 +65,7 @@ program ci_opt
   allocate( gradient(nT_tri) )
   double precision :: norm_grad
   call gradient_list_opt(nT_tri, nT, list_act, gradient, max_grad, norm_grad)
-! max_grad  = maxval( abs(gradient(:)) )
+  max_grad  = maxval( abs(gradient(:)) )
   mean_grad = sum( abs(gradient(:)) ) / size(gradient)
 
 ! Prints the gradient
@@ -110,7 +110,6 @@ program ci_opt
 ! Checks whether the Hessian matrix is symmetric:
   call check_matrix_symmetry(hessian,nT_tri)
 
-
 ! Diagonalizes the Hessian matrix and writes its eigenvalues
   double precision, allocatable :: hessian_eigvalues(:)
   double precision, allocatable :: hessian_eigvectors(:,:)
@@ -118,6 +117,20 @@ program ci_opt
   allocate( hessian_eigvectors(nT_tri,nT_tri) )
   call lapack_diag(hessian_eigvalues,hessian_eigvectors,hessian,nT_tri,nT_tri)
 ! call lapack_diagd(hessian_eigvalues,hessian_eigvectors,hessian,nT_tri,nT_tri)
+
+  integer :: negatives
+  call count_numbers_below_thresh(hessian_eigvalues,nT_tri,-1.d-7,negatives)
+  write(*,*) 
+  write(*,*) 'Number of negative Hessian eigenvalues below -1.0d-7: ', negatives
+  write(*,*) 
+
+  do i=1,nT_tri
+    if( hessian_eigvalues(i).gt.-1.d-7 ) exit
+    write(*,*) 'Largest elements of the eigenvalue ', i
+    write(*,*) 'Eigenvalue = ', hessian_eigvalues(i)
+    call print_largest_eigenvectors(abs(hessian_eigvectors(:,i)),nT_tri)
+    write(*,*) 
+  end do
 
 ! Prints the Hessian eigenvalue:
   if( debug_orbital_optimization ) then
@@ -127,11 +140,6 @@ program ci_opt
 !   write(*,*) 'Hessian eigenvectors:'
 !   call write_ij_2d_array(hessian_eigvectors,nT_tri,nT_tri)
   end if
-
-  integer :: negatives
-  call count_numbers_below_thresh(hessian_eigvalues,nT_tri,-1.d-7,negatives)
-  write(*,*) 
-  write(*,*) 'Number of negative Hessian eigenvalues below -1.0d-7: ', negatives
 
 
   allocate( kappa(nT_tri) )
@@ -554,3 +562,86 @@ subroutine check_allowed_LA_solver_orb_opt(char)
 end subroutine check_allowed_LA_solver_orb_opt
 
 
+subroutine print_n_lowest_matrx_elements(A,n,n_lowest)
+  implicit none
+  BEGIN_DOC
+! 
+  END_DOC
+  integer,          intent(in)  :: n
+  double precision, intent(in)  :: A(n,n)
+  integer,          intent(in)  :: n_lowest
+  double precision, allocatable :: A_copy(:,:)
+! double precision, allocatable :: A_1d(:)
+  integer         , allocatable :: iorder(:)
+! double precision              :: A_1d(n*n)
+! integer                       :: iorder(n*n)
+  integer                       :: n_tri
+  integer                       :: i, j, k, l, p, q, r, s, pq, rs, ij
+
+! n_tri = n * (n-1) / 2
+  n_tri = n * n
+
+  ! Set array of natural numbers
+  allocate( iorder(n_tri) )
+  call set_integer_list(iorder,n_tri)
+! call set_integer_list(iorder,n*n)
+
+  allocate( A_copy(n,n) )
+  A_copy = A
+! allocate( A_1d(n_tri) )
+! A_1d = reshape( A_copy, shape(A_1d) )
+! A_1d = reshape( A_copy, (/1/) )
+
+  ! Sort A_1d in increasing order
+! call dsort(A_1d,iorder,n_tri)
+! call dsort(A_1d,iorder,n*n)
+
+  call dsort(A_copy,iorder,n_tri)
+  write(*,*) 'Smallest matrix elements of the Hessian:'
+  do k=1,n_lowest
+    pq = mod(k-1,n) + 1
+    rs = (k-1)/n + 1
+    l = iorder(k)
+    i = mod(l-1,n) + 1
+    j = (l-1)/n + 1
+    call vec_to_mat_index(j,r,s)
+    call vec_to_mat_index(i,p,q)
+    write(*,'(5(i5,x),e16.8)') k, p, q, r, s, A_copy(pq,rs)
+!   write(*,'(5(i5,x),e16.8)') k, p, q, r, s, A(pq,rs)
+!   write(*,'(7(i5,x),e16.8)') k, i, j, p, q, r, s, A(pq,rs)
+!   write(*,*) k, pq, rs, A(pq,rs)
+  end do
+
+end subroutine
+
+subroutine print_largest_eigenvectors(A,n)
+  implicit none
+  BEGIN_DOC
+! 
+  END_DOC
+  integer,          intent(in)  :: n
+  double precision, intent(in)  :: A(n)
+  double precision, allocatable :: A_copy(:)
+  double precision              :: thresh = 0.2d0
+  integer,          allocatable :: iorder(:)
+  integer                       :: k, l, i, j
+
+! Set array of natural numbers
+  allocate( iorder(n) )
+  call set_integer_list(iorder,n)
+
+  allocate( A_copy(n) )
+  A_copy = A
+
+! Sort A_copy in increasing order
+  call dsort(A_copy,iorder,n)
+
+  do k=n,1,-1
+    if( A_copy(k).lt.thresh ) exit
+    l = iorder(k)
+    call vec_to_mat_index(l,i,j)
+!   write(*,'(2(i5,x),e16.8)') i, j, A_copy(k)
+    write(*,'(2(i5,x),e16.8)') list_act(i), list_act(j), A_copy(k)
+  end do
+
+end subroutine
