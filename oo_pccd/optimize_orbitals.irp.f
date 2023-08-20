@@ -26,8 +26,10 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
 ! Thresholds on convergence of optimized orbitals
   double precision :: max_grad, mean_grad, max_kappa, mean_kappa
   double precision :: max_grad_thresh, mean_grad_thresh, max_kappa_thresh, mean_kappa_thresh
-  max_grad_thresh   = 1.d-5
-  mean_grad_thresh  = 1.d-6
+! max_grad_thresh   = 1.d-5
+! mean_grad_thresh  = 1.d-6
+  max_grad_thresh   = 1.d-6
+  mean_grad_thresh  = 1.d-7
   max_kappa_thresh  = 1.d-3
   mean_kappa_thresh = 1.d-4
 
@@ -51,8 +53,8 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
   deallocate( r_orbrot_g )
 
   write(*,*) 
-! write(*,*) 'Gradients (1d):'
-! call write_i_1d_array(r_orbrot_g_vector,nT_tri)
+  write(*,*) 'Gradients (1d):'
+  call write_i_1d_array(r_orbrot_g_vector,nT_tri)
 
 
 ! Write maximum and mean absolute gradient
@@ -359,10 +361,10 @@ subroutine optimize_orbitals(r_one_e_dm_mo,r_two_e_dm_mo,nT,is_converged)
     call write_i_1d_array(kappa_vector,nT_tri)
  
     do i=1,nT_tri
-      if( hessian_eigvalues(i) .gt. 0.0d0 ) then
-        hessian_eigvalues(i) = hessian_eigvalues(i) + mu_damping
-      else
+      if( hessian_eigvalues(i) < -1.0d-14 ) then
         hessian_eigvalues(i) = hessian_eigvalues(i) - mu_damping
+      else
+        hessian_eigvalues(i) = hessian_eigvalues(i) + mu_damping
       end if
     end do
 
